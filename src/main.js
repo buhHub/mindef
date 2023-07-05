@@ -1,3 +1,10 @@
+// Run dev:
+//   sudo npm run dev
+
+// Deploy:
+//   sudo npm run build
+//   firebase deploy
+
 import Vue from 'vue'
 import App from './App.vue'
 import { initializeApp } from 'firebase/app'
