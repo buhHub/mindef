@@ -42,7 +42,7 @@
           <v-row justify="center" align-content="center">
             <v-col cols="12" sm="3">
               <v-text-field v-model="newGuess" :rules="guessRules" :counter="5" label="5-Digit Guess"
-                required></v-text-field>
+                required ref="guess" v-on:keyup.enter="validateAdd(newGuess,newNCorrect)"></v-text-field>
             </v-col>
 
             <v-col cols="12" sm="3">
@@ -52,7 +52,7 @@
 
             <v-col cols="12" sm="3" align-self="center">
               <v-btn @click="validateAdd(newGuess, newNCorrect)" color="primary" elevation="3"
-                :disabled="!(newGuess.length == 5) || !newNCorrect || newNCorrect > 5 || newNCorrect < 0 || !/([0-9]){5}/.test(newGuess)" block>Add
+                :disabled="!(newGuess.length == 5) || !newNCorrect || newNCorrect > 5 || newNCorrect < 0 || !/([0-9]){5}/.test(newGuess) || !/([0-5]){1}/.test(newNCorrect)" block>Add
                 Guess</v-btn>
             </v-col>
           </v-row>
@@ -77,7 +77,8 @@
 
               <v-divider></v-divider>
 
-              <v-virtual-scroll :items="guesses" :item-height="50" min-height="190" bench="10">
+              <v-virtual-scroll :items="guesses" :item-height="50" min-height="190" bench="10" 
+                :height="guesses.length * 50 + 10" max-height="400">
                 <template v-slot:default="{ item }">
                   <v-list-item>
 
@@ -117,7 +118,8 @@
 
               <v-divider></v-divider>
 
-              <v-virtual-scroll :items="solutions" :item-height="50" bench="10" height="400">
+              <v-virtual-scroll :items="solutions" :item-height="50" bench="10" max-height="400" min-height="60"
+                :height="solutions.length * 50 + 10">
                 <template v-slot:default="{ item }">
                   <v-list-item>
 
@@ -148,10 +150,6 @@
 export default {
   name: 'App',
 
-  components: {
-    // HelloWorld,
-  },
-
   data: () => ({
     valid: false,
     newGuess: '',
@@ -164,6 +162,7 @@ export default {
     nCorrectRules: [
       v => !!v || 'Number of correct digits and positions is required. (0-5)',
       v => v >= 0 || v <= 5 || '# should be between 0 and 5',
+      v => /([0-5]){1}/.test(v) || '# should be between 0 and 5',
     ],
 
     guesses: [],
@@ -176,25 +175,29 @@ export default {
   methods: {
     // Take one of the given solutions, and apply to the input textfield
     resetDialog(confirm) {
-      this.dialog = false
+      this.dialog = false;
       if (confirm) {
-        this.guesses = new Array()
+        this.guesses = new Array();
+        this.resetSolutions();
+        this.resetValidation();
+        this.newGuess = ''
+        this.newNCorrect = ''
       }
     },
     // Take one of the given solutions, and apply to the input textfield
     selectFromSolutions(value) {
-      this.newGuess = value
+      this.newGuess = value;
     },
 
     // After resetting the inputfields, it does not fullfill the validationrules.
     // Therefore, there is a reset. 
     resetValidation() {
-      this.$refs.form.resetValidation()
+      this.$refs.form.resetValidation();
     },
 
     // Solutions will be reset to original state, to avoid inconsistent results
     resetSolutions() {
-      this.solutions = ['00000'].concat(Array.from({ length: 100000 }, (_, i) => '0'.repeat(4 - Math.floor(Math.log10(i + 0.1))) + String(i)).splice(1))
+      this.solutions = ['00000'].concat(Array.from({ length: 100000 }, (_, i) => '0'.repeat(4 - Math.floor(Math.log10(i + 0.1))) + String(i)).splice(1));
     },
 
     // The newly given 5-digit guess will be checked if it already exists in
@@ -211,7 +214,7 @@ export default {
       }
       for (const guess in this.guesses) {
         if (this.guesses[guess].value == newGuess) {
-          this.console.log("duplicate")
+          this.console.log("duplicate");
           // Value already exists in the guesses
           return 0;
         }
@@ -219,10 +222,11 @@ export default {
       this.guesses.unshift({
         value: newGuess,
         nc: Number(newNCorrect)
-      })
-      this.newGuess = ''
-      this.newNCorrect = ''
-      this.resetValidation()
+      });
+      this.newGuess = '';
+      this.newNCorrect = '';
+      this.resetValidation();
+      this.$refs.guess.focus();
     },
 
     // Remove a specified guess from the history
@@ -236,22 +240,22 @@ export default {
       var counter = 0;
       for (let i = 0; i < x.length; i++) {
         if (x[i] == y[i]) {
-          counter++
+          counter++;
         }
       }
-      return counter
+      return counter;
     },
 
     // Calculate all available solutions
     updateSolutions() {
-      this.resetSolutions()
-      var a = this.solSet
+      this.resetSolutions();
+      var a = this.solSet;
       for (const guess in this.guesses) {
-        const currentGuess = this.guesses[guess].value
-        a.forEach(x => { if (this.checkSimilarities(x, currentGuess) != this.guesses[guess].nc) { a.delete(x) } })
+        const currentGuess = this.guesses[guess].value;
+        a.forEach(x => { if (this.checkSimilarities(x, currentGuess) != this.guesses[guess].nc) { a.delete(x) } });
       }
-      this.solutions = (Array.from(a))
-    }
+      this.solutions = (Array.from(a));
+    },
   },
 
   // Computed: kinda like a serverless computer
@@ -259,7 +263,7 @@ export default {
     console: () => console,
     window: () => window,
     solSet() {
-      return new Set(this.solutions)
+      return new Set(this.solutions);
     }
   },
 
@@ -267,18 +271,20 @@ export default {
   watch: {
     guesses(hist) {
       localStorage.guesses = JSON.stringify(hist);
-      this.updateSolutions()
-    }
+      this.updateSolutions();
+    },
+    // solutions() {
+    //   localStorage.guesses = JSON.stringify(hist);
+    //   this.updateSolutions();
+    // },
   },
 
   // Mounted(): Performs actions when page is loaded
   mounted() {
     if (localStorage.guesses) {
-      this.guesses = JSON.parse(localStorage.guesses)
+      this.guesses = JSON.parse(localStorage.guesses);
     }
-    this.updateSolutions()
-  }
+    this.updateSolutions();
+  },
 };
 </script>
-
-49392
