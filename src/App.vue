@@ -11,7 +11,7 @@
 
       <v-spacer></v-spacer>
 
-      <v-dialog v-model="dialog" persistent max-width="290">
+      <v-dialog v-model="reset_Dialog" persistent max-width="290">
         <template v-slot:activator="{ on, attrs }">
           <v-btn color="primary" dark v-bind="attrs" v-on="on" elevation="0">
             <span class="mr-2">Reset</span>
@@ -41,18 +41,20 @@
         <v-container>
           <v-row justify="center" align-content="center">
             <v-col cols="12" sm="3">
-              <v-text-field v-model="newGuess" :rules="guessRules" :counter="5" label="5-Digit Guess"
-                required ref="guess" v-on:keyup.enter="validateAdd(newGuess,newNCorrect)"></v-text-field>
+              <v-text-field v-model="newGuess" :rules="guessRules" :counter="5" label="5-Digit Guess" required ref="guess"
+                v-on:keyup.enter="validateAdd(newGuess, newNCorrect)"></v-text-field>
             </v-col>
 
             <v-col cols="12" sm="3">
-              <v-text-field v-model="newNCorrect" :rules="nCorrectRules" v-on:keyup.enter="validateAdd(newGuess,newNCorrect)"
-                label="# Of Correct Digits in the Right Positions" required></v-text-field>
+              <v-text-field v-model="newNCorrect" :rules="nCorrectRules"
+                v-on:keyup.enter="validateAdd(newGuess, newNCorrect)" label="# Of Correct Digits in the Right Positions"
+                required></v-text-field>
             </v-col>
 
             <v-col cols="12" sm="3" align-self="center">
               <v-btn @click="validateAdd(newGuess, newNCorrect)" color="primary" elevation="3"
-                :disabled="!(newGuess.length == 5) || !newNCorrect || newNCorrect > 5 || newNCorrect < 0 || !/([0-9]){5}/.test(newGuess) || !/([0-5]){1}/.test(newNCorrect)" block>Add
+                :disabled="!(newGuess.length == 5) || !newNCorrect || newNCorrect > 5 || newNCorrect < 0 || !/([0-9]){5}/.test(newGuess) || !/([0-5]){1}/.test(newNCorrect)"
+                block>Add
                 Guess</v-btn>
             </v-col>
           </v-row>
@@ -62,7 +64,7 @@
       <v-container fluid>
         <v-row justify="center" align-content="center">
           <v-col cols="12" md="4">
-            <v-card class="mx-auto" max-width="600">
+            <v-card class="mx-auto" max-width="500">
               <v-card-title class="white--text orange darken-4">
                 History
 
@@ -77,17 +79,18 @@
 
               <v-divider></v-divider>
 
-              <v-virtual-scroll :items="guesses" :item-height="50" min-height="190" bench="10" 
-                :height="guesses.length * 50 + 10" max-height="400">
+              <v-virtual-scroll :items="guesses" item-height="50" min-height="190" bench="10"
+                :height="guesses.length >= 10 ? 380 : guesses.length * 50 + 10" max-height="380">
                 <template v-slot:default="{ item }">
                   <v-list-item>
 
                     <v-list-item-content>
-                      <v-list-item-title>{{ item.value }}</v-list-item-title>
-                    </v-list-item-content>
+                      <v-list-item-title>
+                        <v-badge :color="item.nc == 0 ? 'red' : 'green'" :content="item.nc">
+                          {{ item.value }}
 
-                    <v-list-item-content>
-                      <v-list-item-title>{{ item.nc }}</v-list-item-title>
+                        </v-badge>
+                      </v-list-item-title>
                     </v-list-item-content>
 
                     <v-list-item-action>
@@ -105,7 +108,7 @@
           </v-col>
 
           <v-col cols="12" md="4">
-            <v-card class="mx-auto" max-width="600">
+            <v-card class="mx-auto" max-width="500">
               <v-card-title class="white--text orange darken-4">
                 {{ solutions.length }} Possible Solutions
 
@@ -118,8 +121,8 @@
 
               <v-divider></v-divider>
 
-              <v-virtual-scroll :items="solutions" :item-height="50" bench="10" max-height="400" min-height="60"
-                :height="solutions.length * 50 + 10">
+              <v-virtual-scroll :items="solutions" item-height="50" bench="10" max-height="380" min-height="60"
+                :height="solutions.length >= 10 ? 380 : solutions.length * 50 + 10">
                 <template v-slot:default="{ item }">
                   <v-list-item>
 
@@ -128,7 +131,7 @@
                     </v-list-item-content>
 
                     <v-list-item-action>
-                      <v-btn @click="selectFromSolutions(item)">
+                      <v-btn @click="newGuess = item">
 
                         <v-icon color="green" small>
                           mdi-plus
@@ -142,6 +145,55 @@
           </v-col>
         </v-row>
       </v-container>
+
+      <v-dialog v-model="result_Dialog" persistent max-width="500">
+        <v-card>
+          <v-card-title class="text-h5">
+            Congratulations!
+          </v-card-title>
+          <v-card-text>You found the only possible answer: {{ solutions[0] }}</v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="grey darken-1" text @click="result_Dialog = false">
+              RETURN
+            </v-btn>
+            <v-btn color="green darken-1" text @click="resetDialog(true)">
+              START OVER
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="error_Dialog" persistent max-width="500">
+        <v-card class="d-flex flex-column">
+          <v-card-title class="text-h5">
+            Error
+          </v-card-title>
+          <v-card-text>Considering all your guesses, there is no possible solution.</v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="grey darken-1" text @click="error_Dialog = false">
+              RETURN
+            </v-btn>
+            <v-btn color="green darken-1" text @click="errorDialog(false)">
+              REMOVE LAST GUESS
+            </v-btn>
+            <v-btn color="red darken-1" text @click="errorDialog(true)">
+              RESTART ALL
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-snackbar v-model="notification" timeout="5000">
+        {{ text }}
+
+        <template v-slot:action="{ attrs }">
+          <v-btn color="blue" text v-bind="attrs" @click="notification = false">
+            Close
+          </v-btn>
+        </template>
+      </v-snackbar>
     </v-main>
   </v-app>
 </template>
@@ -152,6 +204,11 @@ export default {
 
   data: () => ({
     valid: false,
+    text: '',
+    reset_Dialog: false,
+    result_Dialog: false,
+    error_Dialog: false,
+    notification: false,
     newGuess: '',
     newNCorrect: '',
     guessRules: [
@@ -168,25 +225,40 @@ export default {
     guesses: [],
     solutions: ['00000'].concat(Array.from({ length: 100000 }, (_, i) => '0'.repeat(4 - Math.floor(Math.log10(i + 0.1))) + String(i)).splice(1)),
 
-    dialog: false,
-
 
   }),
+
   methods: {
-    // Take one of the given solutions, and apply to the input textfield
+    // Resets all textfields
+    resetAll() {
+      this.resetValidation();
+      this.newGuess = ''
+      this.newNCorrect = ''
+      this.$refs.guess.focus();
+    },
+
+    // Action on when the Error Dialog has been dismissed
+    errorDialog(remove) {
+      this.error_Dialog = false;
+      if (remove) {
+        this.resetDialog(true);
+      }
+      else {
+        this.guesses = this.guesses.slice(1, this.guesses.length);
+        this.resetSolutions();
+        this.resetAll();
+      }
+    },
+
+    // Action on when the Reset Dialog has been dismissed
     resetDialog(confirm) {
-      this.dialog = false;
+      this.result_Dialog = false;
+      this.reset_Dialog = false;
       if (confirm) {
         this.guesses = new Array();
         this.resetSolutions();
-        this.resetValidation();
-        this.newGuess = ''
-        this.newNCorrect = ''
+        this.resetAll();
       }
-    },
-    // Take one of the given solutions, and apply to the input textfield
-    selectFromSolutions(value) {
-      this.newGuess = value;
     },
 
     // After resetting the inputfields, it does not fullfill the validationrules.
@@ -197,7 +269,7 @@ export default {
 
     // Solutions will be reset to original state, to avoid inconsistent results
     resetSolutions() {
-      this.solutions = ['00000'].concat(Array.from({ length: 100000 }, (_, i) => '0'.repeat(4 - Math.floor(Math.log10(i + 0.1))) + String(i)).splice(1));
+      this.solutions = ['00000'].concat(Array.from({ length: 100000 }, (_, i) => '0'.repeat(4 - Math.floor(Math.log10(i + 0.1))) + String(i)).splice(1))
     },
 
     // The newly given 5-digit guess will be checked if it already exists in
@@ -214,8 +286,8 @@ export default {
       }
       for (const guess in this.guesses) {
         if (this.guesses[guess].value == newGuess) {
-          this.console.log("duplicate");
-          // Value already exists in the guesses
+          this.text = "This guess already exists.";
+          this.notification = true
           return 0;
         }
       }
@@ -223,10 +295,7 @@ export default {
         value: newGuess,
         nc: Number(newNCorrect)
       });
-      this.newGuess = '';
-      this.newNCorrect = '';
-      this.resetValidation();
-      this.$refs.guess.focus();
+      this.resetAll();
     },
 
     // Remove a specified guess from the history
@@ -264,7 +333,7 @@ export default {
     window: () => window,
     solSet() {
       return new Set(this.solutions);
-    }
+    },
   },
 
   // Watch: Performs actions when a variable changed value
@@ -273,10 +342,14 @@ export default {
       localStorage.guesses = JSON.stringify(hist);
       this.updateSolutions();
     },
-    // solutions() {
-    //   localStorage.guesses = JSON.stringify(hist);
-    //   this.updateSolutions();
-    // },
+    solutions() {
+      if (this.solutions.length == 0) {
+        this.error_Dialog = true
+      }
+      if (this.solutions.length == 1) {
+        this.result_Dialog = true
+      }
+    },
   },
 
   // Mounted(): Performs actions when page is loaded
